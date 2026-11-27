@@ -1,0 +1,54 @@
+{
+  "scenario": "omikuji-stop",
+  "title": "おみくじ API を止める（nginx は動かしたまま）",
+  "target": "web",
+  "expect": [
+    "omikuji API is not running",
+    "/omikuji returns 502",
+    "HTTP check of /omikuji failed"
+  ],
+  "detected": {
+    "omikuji API is not running": {
+      "event_name": "omikuji API is not running on aws-iac-monitoring-dev-web",
+      "severity": "High",
+      "at": "2026-11-27T13:36:00+09:00",
+      "seconds_after_injection": 7
+    },
+    "/omikuji returns 502": {
+      "event_name": "/omikuji returns 502 on aws-iac-monitoring-dev-web (nginx is up, the API behind it is down)",
+      "severity": "High",
+      "at": "2026-11-27T13:36:02+09:00",
+      "seconds_after_injection": 9
+    },
+    "HTTP check of /omikuji failed": {
+      "event_name": "HTTP check of /omikuji failed on aws-iac-monitoring-dev-web",
+      "severity": "High",
+      "at": "2026-11-27T13:36:02+09:00",
+      "seconds_after_injection": 9
+    }
+  },
+  "resolved": {
+    "omikuji API is not running": {
+      "at": "2026-11-27T13:36:31+09:00",
+      "seconds_after_recovery": 25
+    },
+    "/omikuji returns 502": {
+      "at": "2026-11-27T13:36:36+09:00",
+      "seconds_after_recovery": 31
+    },
+    "HTTP check of /omikuji failed": {
+      "at": "2026-11-27T13:36:36+09:00",
+      "seconds_after_recovery": 31
+    }
+  },
+  "unexpected": [],
+  "result": "PASS",
+  "injected_at": "2026-11-27T13:35:52+09:00",
+  "problems_while_injected": [
+    "omikuji API is not running on aws-iac-monitoring-dev-web",
+    "HTTP check of /omikuji failed on aws-iac-monitoring-dev-web",
+    "/omikuji returns 502 on aws-iac-monitoring-dev-web (nginx is up, the API behind it is down)"
+  ],
+  "recovered_at": "2026-11-27T13:36:05+09:00",
+  "problems_after": []
+}

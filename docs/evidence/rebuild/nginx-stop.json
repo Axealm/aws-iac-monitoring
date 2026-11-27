@@ -1,0 +1,42 @@
+{
+  "scenario": "nginx-stop",
+  "title": "nginx を止める",
+  "target": "web",
+  "expect": [
+    "nginx is not running",
+    "HTTP check of /omikuji failed"
+  ],
+  "detected": {
+    "nginx is not running": {
+      "event_name": "nginx is not running on aws-iac-monitoring-dev-web",
+      "severity": "High",
+      "at": "2026-11-27T13:32:59+09:00",
+      "seconds_after_injection": 10
+    },
+    "HTTP check of /omikuji failed": {
+      "event_name": "HTTP check of /omikuji failed on aws-iac-monitoring-dev-web",
+      "severity": "High",
+      "at": "2026-11-27T13:33:02+09:00",
+      "seconds_after_injection": 13
+    }
+  },
+  "resolved": {
+    "nginx is not running": {
+      "at": "2026-11-27T13:33:32+09:00",
+      "seconds_after_recovery": 25
+    },
+    "HTTP check of /omikuji failed": {
+      "at": "2026-11-27T13:33:32+09:00",
+      "seconds_after_recovery": 25
+    }
+  },
+  "unexpected": [],
+  "result": "PASS",
+  "injected_at": "2026-11-27T13:32:49+09:00",
+  "problems_while_injected": [
+    "nginx is not running on aws-iac-monitoring-dev-web",
+    "HTTP check of /omikuji failed on aws-iac-monitoring-dev-web"
+  ],
+  "recovered_at": "2026-11-27T13:33:07+09:00",
+  "problems_after": []
+}
