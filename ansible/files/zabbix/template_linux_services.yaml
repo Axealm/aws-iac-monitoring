@@ -1,0 +1,52 @@
+# 独自テンプレート: 全サーバー共通の監視（chronyd の稼働、CPU 使用率）。
+# Zabbix の「エクスポート」と同じ形式。ansible/zabbix-config.yml が Zabbix に取り込む。
+# トリガー名は、SNS のメールの件名に入るので英数字で書いている（件名は ASCII しか使えない）。
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 0fa59bb3714447de80eb41d47ddff11b
+      name: Templates/aws-iac-monitoring
+  templates:
+    - uuid: 9fec2cfa287c4113a828eb2573da5df3
+      template: Custom Linux services
+      name: Custom Linux services
+      description: 'chronyd service state and CPU utilization, checked every 30 seconds.'
+      groups:
+        - name: Templates/aws-iac-monitoring
+      items:
+        - uuid: 6fa34ba2ffb04c379f672b652ea3ae6b
+          name: 'chronyd: active state'
+          key: 'systemd.unit.info["chronyd.service",ActiveState]'
+          delay: 30s
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          description: 'systemd の ActiveState。動いていれば active。'
+          tags:
+            - tag: component
+              value: time-sync
+          triggers:
+            - uuid: 665a92a6b711427fbad975cbdbfa0cca
+              expression: 'find(/Custom Linux services/systemd.unit.info["chronyd.service",ActiveState],,"regexp","^active$")=0'
+              name: 'chronyd is not running on {HOST.NAME}'
+              priority: HIGH
+              description: '時刻同期のサービスが止まっている。docs/runbook.md の「chronyd」を参照。'
+              manual_close: 'NO'
+        - uuid: c296ca4602c04c3e8ae69cff5fdac240
+          name: 'CPU idle time (30s)'
+          key: 'system.cpu.util[,idle,avg1]'
+          delay: 30s
+          history: 7d
+          value_type: FLOAT
+          units: '%'
+          description: 'CPU が空いている割合（直近1分の平均）。使用率は 100 からこの値を引いたもの。'
+          tags:
+            - tag: component
+              value: cpu
+          triggers:
+            - uuid: c3985bfad6554dfdba2879dc6f2eea07
+              expression: 'avg(/Custom Linux services/system.cpu.util[,idle,avg1],2m)<20'
+              name: 'CPU utilization is above 80% for 2 minutes on {HOST.NAME}'
+              priority: WARNING
+              description: 'CPU 使用率が2分間の平均で 80% を超えた。docs/runbook.md の「CPU」を参照。'
+              manual_close: 'NO'

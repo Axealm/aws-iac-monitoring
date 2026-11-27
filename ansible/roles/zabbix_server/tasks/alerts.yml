@@ -1,0 +1,18 @@
+---
+# Zabbix のアラートを SNS に送るためのスクリプトを置く。
+# トピックの ARN（アカウント ID を含む）は、scripts/dev/ansible.sh が Terraform の出力から取って渡す。
+
+- name: 通知先の SNS トピックが指定されていることを確認する
+  ansible.builtin.assert:
+    that:
+      - zabbix_server_sns_topic_arn | length > 0
+    fail_msg: 環境変数 ALERT_SNS_TOPIC_ARN がありません。scripts/dev/ansible.sh から実行してください。
+    quiet: true
+
+- name: SNS に通知を送るスクリプトを配置する
+  ansible.builtin.template:
+    src: sns-publish.sh.j2
+    dest: /usr/lib/zabbix/alertscripts/sns-publish.sh
+    owner: root
+    group: zabbix
+    mode: "0750"

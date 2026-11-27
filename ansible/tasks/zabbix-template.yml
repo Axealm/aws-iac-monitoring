@@ -1,0 +1,38 @@
+---
+# テンプレート1つ分の取り込み。zabbix-config.yml から、テンプレートごとに呼ばれる。
+# 変数 zabbix_template: { name: テンプレート名, file: YAML ファイルのパス }
+
+- name: "ファイルの内容のハッシュを計算する（{{ zabbix_template.name }}）"
+  ansible.builtin.set_fact:
+    zabbix_template_sha: "{{ lookup('ansible.builtin.file', zabbix_template.file) | ansible.builtin.hash('sha256') }}"
+
+- name: "Zabbix にある今のテンプレートを調べる（{{ zabbix_template.name }}）"
+  community.zabbix.zabbix_template_info:
+    template_name: "{{ zabbix_template.name }}"
+    format: json
+    omit_date: true
+  register: zabbix_template_current
+  # まだ登録されていないときは失敗するが、その場合は取り込めばよい
+  failed_when: false
+
+- name: "記録されているハッシュを取り出す（{{ zabbix_template.name }}）"
+  ansible.builtin.set_fact:
+    zabbix_template_recorded_sha: >-
+      {{ (zabbix_template_current.template_json.zabbix_export.templates[0].tags | default([])
+          | selectattr('tag', 'equalto', 'config_sha256') | map(attribute='value') | list | first)
+         | default('', true) }}
+
+- name: "テンプレートを取り込む（{{ zabbix_template.name }}）"
+  community.zabbix.zabbix_template:
+    template_yaml: "{{ lookup('ansible.builtin.file', zabbix_template.file) }}"
+    state: present
+  when: zabbix_template_recorded_sha != zabbix_template_sha
+
+- name: "取り込んだ内容のハッシュをタグに記録する（{{ zabbix_template.name }}）"
+  community.zabbix.zabbix_template:
+    template_name: "{{ zabbix_template.name }}"
+    tags:
+      - tag: config_sha256
+        value: "{{ zabbix_template_sha }}"
+    state: present
+  when: zabbix_template_recorded_sha != zabbix_template_sha

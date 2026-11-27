@@ -14,6 +14,8 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 export PATH="$HOME/.local/bin:$PATH"
 export ANSIBLE_CONFIG="$root/ansible/ansible.cfg"
 export ANSIBLE_SSM_BUCKET="${ANSIBLE_SSM_BUCKET:-$(terraform -chdir="$root/terraform/envs/dev" output -raw ansible_ssm_bucket_name)}"
+# Zabbix のアラートの通知先（SNS トピック。ARN にアカウント ID が入るので、ここで渡す）
+export ALERT_SNS_TOPIC_ARN="${ALERT_SNS_TOPIC_ARN:-$(terraform -chdir="$root/terraform/envs/dev" output -raw sns_topic_arn)}"
 
 cd "$root/ansible"
 exec "$@"

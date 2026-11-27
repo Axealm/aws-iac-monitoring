@@ -1,0 +1,38 @@
+{
+  "scenario": "cpu-load",
+  "title": "CPU に負荷をかける",
+  "target": "web",
+  "expect": [
+    "CPU utilization is above 80%"
+  ],
+  "detected": {
+    "CPU utilization is above 80%": {
+      "event_name": "CPU utilization is above 80% for 2 minutes on aws-iac-monitoring-dev-web",
+      "severity": "Warning",
+      "at": "2026-11-27T12:11:55+09:00",
+      "seconds_after_injection": 128
+    }
+  },
+  "resolved": {
+    "CPU utilization is above 80%": {
+      "at": "2026-11-27T12:12:58+09:00",
+      "seconds_after_recovery": 56
+    }
+  },
+  "unexpected": [],
+  "result": "PASS",
+  "cloudwatch_alarm": "aws-iac-monitoring-dev-web-cpu-high",
+  "cloudwatch_before": "OK",
+  "injected_at": "2026-11-27T12:09:46+09:00",
+  "problems_while_injected": [
+    "CPU utilization is above 80% for 2 minutes on aws-iac-monitoring-dev-web"
+  ],
+  "cloudwatch_alarm_at": "2026-11-27T12:11:59+09:00",
+  "cloudwatch_seconds_after_injection": 133,
+  "cloudwatch_state_while_injected": "ALARM",
+  "recovered_at": "2026-11-27T12:12:02+09:00",
+  "cloudwatch_state_after_recovery": "OK",
+  "cloudwatch_ok_at": "2026-11-27T12:13:39+09:00",
+  "cloudwatch_seconds_after_recovery": 97,
+  "problems_after": []
+}

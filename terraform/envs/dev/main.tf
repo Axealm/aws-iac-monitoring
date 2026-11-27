@@ -1,4 +1,4 @@
-# dev 環境。network と compute のモジュールを組み合わせる。
+# dev 環境。network・compute・monitoring のモジュールを組み合わせる。
 
 locals {
   name = "${var.project}-${var.environment}"
@@ -31,4 +31,13 @@ module "compute" {
       security_group_ids = [module.network.web_security_group_id]
     }
   }
+}
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  name                       = local.name
+  alarm_email                = var.alarm_email
+  instance_ids               = module.compute.instance_ids
+  zabbix_publisher_role_name = module.compute.iam_role_names["monitor"]
 }

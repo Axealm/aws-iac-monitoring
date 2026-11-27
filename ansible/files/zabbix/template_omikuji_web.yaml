@@ -1,0 +1,81 @@
+# 独自テンプレート: web サーバーの監視（nginx、おみくじ API、/omikuji の HTTP 応答）。
+# Zabbix の「エクスポート」と同じ形式。ansible/zabbix-config.yml が Zabbix に取り込む。
+#
+# nginx とおみくじ API を別々に見ているので、次の3つを区別できる。
+# - nginx が止まった             → nginx のトリガーと HTTP の監視が発報
+# - おみくじ API だけが止まった  → API のトリガーと「502」のトリガーが発報（nginx は動いている）
+# - サーバーごと応答しない       → HTTP の監視だけが発報（サービスの値は取れなくなる）
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 0fa59bb3714447de80eb41d47ddff11b
+      name: Templates/aws-iac-monitoring
+  templates:
+    - uuid: 37d3c490225840559a8995a539dec955
+      template: Custom omikuji web
+      name: Custom omikuji web
+      description: 'nginx and the omikuji API: service state and an HTTP check of /omikuji from the Zabbix server.'
+      groups:
+        - name: Templates/aws-iac-monitoring
+      items:
+        - uuid: 3763fc0db83b40a6b562be5ca15b3c62
+          name: 'nginx: active state'
+          key: 'systemd.unit.info["nginx.service",ActiveState]'
+          delay: 30s
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          tags:
+            - tag: component
+              value: nginx
+          triggers:
+            - uuid: 6684354dd5af41afb2907a615539000e
+              expression: 'find(/Custom omikuji web/systemd.unit.info["nginx.service",ActiveState],,"regexp","^active$")=0'
+              name: 'nginx is not running on {HOST.NAME}'
+              priority: HIGH
+              description: 'nginx が止まっている。docs/runbook.md の「nginx」を参照。'
+              manual_close: 'NO'
+        - uuid: 8d540b7611d240debb33c7808ede2482
+          name: 'omikuji API: active state'
+          key: 'systemd.unit.info["omikuji.service",ActiveState]'
+          delay: 30s
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          tags:
+            - tag: component
+              value: omikuji
+          triggers:
+            - uuid: 055f82b154cb445e86ac962b438e4c09
+              expression: 'find(/Custom omikuji web/systemd.unit.info["omikuji.service",ActiveState],,"regexp","^active$")=0'
+              name: 'omikuji API is not running on {HOST.NAME}'
+              priority: HIGH
+              description: 'おみくじ API が止まっている。nginx が動いていれば /omikuji は 502 を返す。docs/runbook.md の「おみくじ API」を参照。'
+              manual_close: 'NO'
+      httptests:
+        - uuid: 25c4f11be41d4f29853556e4062ef311
+          name: Omikuji API
+          delay: 30s
+          attempts: '1'
+          steps:
+            - name: GET /omikuji
+              url: 'http://{HOST.CONN}/omikuji'
+              timeout: 5s
+              required: result
+              status_codes: '200'
+          tags:
+            - tag: component
+              value: omikuji
+  triggers:
+    - uuid: cc989fb37ff2449cb884aa3a7b5a7099
+      expression: 'last(/Custom omikuji web/web.test.fail[Omikuji API])<>0'
+      name: 'HTTP check of /omikuji failed on {HOST.NAME}'
+      priority: HIGH
+      description: '監視サーバーから /omikuji を取得できない（200 以外、応答なし、または本文に result がない）。'
+      manual_close: 'NO'
+    - uuid: 73474f2ccec4424fb434932f4d5505a4
+      expression: 'last(/Custom omikuji web/web.test.rspcode[Omikuji API,GET /omikuji])=502'
+      name: '/omikuji returns 502 on {HOST.NAME} (nginx is up, the API behind it is down)'
+      priority: HIGH
+      description: 'nginx は応答しているが、裏のおみくじ API に中継できない。'
+      manual_close: 'NO'

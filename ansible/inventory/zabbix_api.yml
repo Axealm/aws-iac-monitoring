@@ -1,0 +1,17 @@
+# Zabbix の API を呼ぶための接続先。
+# API は監視サーバーの中（127.0.0.1:8080）でしか待ち受けていない。
+# scripts/dev/zabbix-config.sh が SSM のポート転送を張り、手元の 127.0.0.1:18080 から届くようにする。
+---
+zabbix:
+  hosts:
+    zabbix_api:
+      ansible_host: 127.0.0.1
+      ansible_connection: ansible.netcommon.httpapi
+      ansible_network_os: community.zabbix.zabbix
+      ansible_httpapi_port: 18080
+      ansible_httpapi_use_ssl: false
+      ansible_httpapi_validate_certs: false
+      ansible_zabbix_url_path: ""
+      ansible_user: Admin
+      # 管理者のパスワードは SSM Parameter Store から読む（ここには書かない）
+      ansible_httpapi_pass: "{{ lookup('amazon.aws.ssm_parameter', ssm_param_prefix ~ '/zabbix/admin-password', region=aws_region) }}"

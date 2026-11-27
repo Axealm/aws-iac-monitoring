@@ -39,3 +39,9 @@ variable "web_instance_type" {
   type        = string
   default     = "t3.micro"
 }
+
+variable "alarm_email" {
+  description = "アラートの通知を受け取るメールアドレス。terraform.tfvars に書き、リポジトリには入れない"
+  type        = string
+  sensitive   = true
+}

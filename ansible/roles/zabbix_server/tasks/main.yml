@@ -15,3 +15,6 @@
 
 - name: 管理者の初期パスワードを変更する
   ansible.builtin.import_tasks: admin_password.yml
+
+- name: アラートを SNS に送るスクリプトを置く
+  ansible.builtin.import_tasks: alerts.yml

@@ -30,3 +30,13 @@ output "omikuji_url" {
   description = "おみくじ API の URL（allowed_http_cidrs に入れた IP からだけ開ける）"
   value       = "http://${module.compute.public_ips["web"]}/omikuji"
 }
+
+output "sns_topic_arn" {
+  description = "アラートの通知先の SNS トピックの ARN"
+  value       = module.monitoring.sns_topic_arn
+}
+
+output "alarm_names" {
+  description = "作成した CloudWatch アラームの名前"
+  value       = module.monitoring.alarm_names
+}

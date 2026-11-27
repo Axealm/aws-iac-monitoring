@@ -4,7 +4,7 @@
 #   bash scripts/dev/ansible.sh ansible-playbook site.yml
 
 - name: 全サーバー共通の設定
-  hosts: all
+  hosts: aws_ec2
   become: true
   roles:
     - role: common

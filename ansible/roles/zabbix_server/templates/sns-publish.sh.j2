@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+# Zabbix のアラートを SNS に送る。Zabbix のメディアタイプ（スクリプト）から呼ばれる。
+#
+#   sns-publish.sh <件名> <本文>
+#
+# 認証は、このサーバーの IAM ロールを使う（アクセスキーは置かない）。
+# ロールには、このトピックへの sns:Publish だけを許可している。
+set -euo pipefail
+
+subject="${1:-Zabbix alert}"
+message="${2:-(no message)}"
+
+# SNS のメールの件名は、ASCII の100文字未満で、改行を含められない
+subject="$(printf '%s' "$subject" | tr -d '\r\n' | LC_ALL=C tr -cd '[:print:]' | cut -c1-99)"
+
+# zabbix ユーザーにはホームディレクトリがないので、AWS CLI の作業場所を /tmp にする
+export HOME=/tmp
+
+exec /usr/bin/aws sns publish \
+  --region "{{ aws_region }}" \
+  --topic-arn "{{ zabbix_server_sns_topic_arn }}" \
+  --subject "$subject" \
+  --message "$message"

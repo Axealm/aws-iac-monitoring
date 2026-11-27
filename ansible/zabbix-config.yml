@@ -1,0 +1,142 @@
+---
+# Zabbix の監視設定をコードで登録する。次のコマンドで実行する（リポジトリの直下から）。
+#
+#   bash scripts/dev/zabbix-config.sh
+#
+# 登録するもの: ホストグループ、独自テンプレート、監視対象の2台、SNS への通知。
+
+- name: Zabbix の監視設定
+  hosts: zabbix_api
+  gather_facts: false
+  vars:
+    zabbix_host_group: aws-iac-monitoring
+    zabbix_media_type: SNS
+    zabbix_alert_user: Admin
+    zabbix_templates:
+      - name: Custom Linux services
+        file: files/zabbix/template_linux_services.yaml
+      - name: Custom omikuji web
+        file: files/zabbix/template_omikuji_web.yaml
+    # グループごとに付けるテンプレート。標準のテンプレートに、独自のものを足す。
+    zabbix_templates_by_role:
+      monitor:
+        - Linux by Zabbix agent
+        - Custom Linux services
+      web:
+        - Linux by Zabbix agent
+        - Custom Linux services
+        - Custom omikuji web
+
+  tasks:
+    - name: ホストグループを作る
+      community.zabbix.zabbix_group:
+        host_groups:
+          - "{{ zabbix_host_group }}"
+        state: present
+
+    # テンプレートの取り込みは、実行するたびに「変更あり」になる。
+    # ファイルの内容のハッシュをテンプレートのタグに記録しておき、変わったときだけ取り込む。
+    - name: 独自テンプレートを、内容が変わったときだけ取り込む
+      ansible.builtin.include_tasks: tasks/zabbix-template.yml
+      loop: "{{ zabbix_templates }}"
+      loop_control:
+        loop_var: zabbix_template
+        label: "{{ zabbix_template.name }}"
+
+    # 動的インベントリにいる EC2 を、そのまま監視対象として登録する。
+    # 接続先はプライベート IP（監視サーバーと同じ VPC の中）。
+    - name: 監視対象のサーバーを登録する
+      community.zabbix.zabbix_host:
+        host_name: "{{ item }}"
+        visible_name: "{{ item }}"
+        host_groups:
+          - "{{ zabbix_host_group }}"
+        link_templates: "{{ zabbix_templates_by_role[hostvars[item].ec2_tags.Role] }}"
+        interfaces:
+          - type: agent
+            main: 1
+            useip: 1
+            ip: "{{ hostvars[item].private_ip }}"
+            dns: ""
+            port: "10050"
+        tags:
+          - tag: role
+            value: "{{ hostvars[item].ec2_tags.Role }}"
+        status: enabled
+        state: present
+      loop: "{{ groups['aws_ec2'] | sort }}"
+
+    - name: SNS に送るメディアタイプを作る
+      community.zabbix.zabbix_mediatype:
+        name: "{{ zabbix_media_type }}"
+        description: Publish alerts to Amazon SNS through the instance role (sns-publish.sh).
+        type: script
+        script_name: sns-publish.sh
+        script_params:
+          - "{ALERT.SUBJECT}"
+          - "{ALERT.MESSAGE}"
+        message_templates:
+          - eventsource: triggers
+            recovery: operations
+            subject: "[Zabbix] PROBLEM: {EVENT.NAME}"
+            body: |-
+              Problem started at {EVENT.TIME} on {EVENT.DATE}
+              Host: {HOST.NAME}
+              Severity: {EVENT.SEVERITY}
+              Problem: {EVENT.NAME}
+              Latest value: {ITEM.LASTVALUE1}
+              Event ID: {EVENT.ID}
+          - eventsource: triggers
+            recovery: recovery_operations
+            subject: "[Zabbix] RESOLVED: {EVENT.NAME}"
+            body: |-
+              Problem resolved at {EVENT.RECOVERY.TIME} on {EVENT.RECOVERY.DATE}
+              Host: {HOST.NAME}
+              Severity: {EVENT.SEVERITY}
+              Problem: {EVENT.NAME}
+              Duration: {EVENT.DURATION}
+              Event ID: {EVENT.ID}
+        state: present
+
+    # 通知の宛先は SNS トピックで決まるので、Zabbix 側の宛先は目印の文字列でよい
+    - name: 通知を受け取るユーザーにメディアを付ける
+      community.zabbix.zabbix_user:
+        username: "{{ zabbix_alert_user }}"
+        # モジュールの決まりでパスワードの指定が必要。今の値をそのまま渡し、変更はしない。
+        passwd: "{{ ansible_httpapi_pass }}"
+        override_passwd: false
+        usrgrps:
+          - Zabbix administrators
+        role_name: Super admin role
+        user_medias:
+          - mediatype: "{{ zabbix_media_type }}"
+            sendto: sns
+            period: 1-7,00:00-24:00
+            severity:
+              not_classified: true
+              information: true
+              warning: true
+              average: true
+              high: true
+              disaster: true
+            active: true
+        state: present
+
+    - name: 障害の発生と復旧を通知するアクションを作る
+      community.zabbix.zabbix_action:
+        name: Notify aws-iac-monitoring problems to SNS
+        event_source: trigger
+        esc_period: 1h
+        status: enabled
+        conditions:
+          - type: host_group
+            operator: "="
+            value: "{{ zabbix_host_group }}"
+        operations:
+          - type: send_message
+            media_type: "{{ zabbix_media_type }}"
+            send_to_users:
+              - "{{ zabbix_alert_user }}"
+        recovery_operations:
+          - type: notify_all_involved
+        state: present
