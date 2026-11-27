@@ -1,0 +1,19 @@
+---
+# --- 接続: SSH は使わず、SSM Session Manager で接続する ---
+ansible_connection: amazon.aws.aws_ssm
+ansible_aws_ssm_region: ap-northeast-1
+# ファイル転送用の S3 バケット。名前にアカウント ID が入るので、ここには書かない。
+# scripts/dev/ansible.sh が Terraform の出力から取り、環境変数で渡す。
+ansible_aws_ssm_bucket_name: "{{ lookup('ansible.builtin.env', 'ANSIBLE_SSM_BUCKET') }}"
+ansible_python_interpreter: /usr/bin/python3
+
+# --- 共通の設定 ---
+aws_region: ap-northeast-1
+timezone: Asia/Tokyo
+
+# 監視サーバーのプライベート IP（動的インベントリから取る）
+zabbix_server_ip: "{{ hostvars[groups['monitor'][0]].private_ip }}"
+
+# パスワードを置く SSM Parameter Store のパス（値そのものは書かない）。
+# "aws" や "ssm" で始まる名前は AWS が予約していて使えないので、プロジェクト名の "aws-" を外している。
+ssm_param_prefix: /iac-monitoring/dev

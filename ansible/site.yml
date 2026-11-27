@@ -1,0 +1,24 @@
+---
+# 全体の構成。次のコマンドで実行する（リポジトリの直下から）。
+#
+#   bash scripts/dev/ansible.sh ansible-playbook site.yml
+
+- name: 全サーバー共通の設定
+  hosts: all
+  become: true
+  roles:
+    - role: common
+    - role: chrony
+    - role: zabbix_agent
+
+- name: 監視サーバー（Zabbix Server）
+  hosts: monitor
+  become: true
+  roles:
+    - role: zabbix_server
+
+- name: Web サーバー（nginx + おみくじ API）
+  hosts: web
+  become: true
+  roles:
+    - role: web

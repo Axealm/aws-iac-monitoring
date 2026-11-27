@@ -1,0 +1,38 @@
+---
+# Zabbix エージェント（agent2）。全サーバーに入れる。
+
+- name: Zabbix のリポジトリを登録する
+  ansible.builtin.import_tasks: repo.yml
+
+- name: Zabbix agent2 を入れる
+  ansible.builtin.dnf:
+    name: zabbix-agent2
+    state: present
+
+- name: Zabbix agent2 の設定を配置する
+  ansible.builtin.template:
+    src: 10-server.conf.j2
+    dest: /etc/zabbix/zabbix_agent2.d/10-server.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Zabbix agent2 を再起動する
+
+# パッケージ既定の設定ファイルには Server=127.0.0.1 などが書かれていて、上の追加設定と
+# 値が重なる。既定の3行をコメントにして、追加設定の値だけが使われるようにする。
+- name: 既定の設定ファイルで、追加設定と重なる行を無効にする
+  ansible.builtin.replace:
+    path: /etc/zabbix/zabbix_agent2.conf
+    regexp: '^({{ item }}=.*)$'
+    replace: '# \1'
+  loop:
+    - Server
+    - ServerActive
+    - Hostname
+  notify: Zabbix agent2 を再起動する
+
+- name: Zabbix agent2 を起動し、起動時にも動くようにする
+  ansible.builtin.systemd_service:
+    name: zabbix-agent2
+    state: started
+    enabled: true

@@ -1,0 +1,50 @@
+---
+- name: PostgreSQL を入れる
+  ansible.builtin.dnf:
+    name:
+      - "postgresql{{ zabbix_server_pg_version }}-server"
+      - "postgresql{{ zabbix_server_pg_version }}"
+      - python3-psycopg2 # Ansible の PostgreSQL 用モジュールが使う
+    state: present
+
+- name: データベースの領域を初期化する（最初の1回だけ）
+  ansible.builtin.command: postgresql-setup --initdb
+  args:
+    creates: /var/lib/pgsql/data/PG_VERSION
+
+- name: PostgreSQL を起動し、起動時にも動くようにする
+  ansible.builtin.systemd_service:
+    name: postgresql
+    state: started
+    enabled: true
+
+- name: Zabbix 用のデータベースユーザーを作る
+  community.postgresql.postgresql_user:
+    name: "{{ zabbix_server_db_user }}"
+    password: "{{ zabbix_server_db_password }}"
+  become: true
+  become_user: postgres
+  no_log: true
+
+- name: Zabbix 用のデータベースを作る
+  community.postgresql.postgresql_db:
+    name: "{{ zabbix_server_db_name }}"
+    owner: "{{ zabbix_server_db_user }}"
+    encoding: UTF8
+    template: template0
+  become: true
+  become_user: postgres
+
+# Zabbix サーバーと Web 画面は、このサーバーの中から TCP とパスワードで接続する
+- name: Zabbix からのパスワード接続を許可する
+  community.postgresql.postgresql_pg_hba:
+    dest: /var/lib/pgsql/data/pg_hba.conf
+    contype: host
+    databases: "{{ zabbix_server_db_name }}"
+    users: "{{ zabbix_server_db_user }}"
+    source: 127.0.0.1/32
+    method: scram-sha-256
+  notify: PostgreSQL を読み込み直す
+
+- name: 設定の変更をここで反映する
+  ansible.builtin.meta: flush_handlers

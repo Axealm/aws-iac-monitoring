@@ -1,0 +1,52 @@
+---
+- name: Web 画面のデータベース接続を設定する
+  ansible.builtin.template:
+    src: zabbix.conf.php.j2
+    dest: /etc/zabbix/web/zabbix.conf.php
+    owner: apache
+    group: apache
+    mode: "0600"
+  no_log: true
+
+- name: PHP のタイムゾーンを設定する
+  ansible.builtin.lineinfile:
+    path: /etc/php-fpm.d/zabbix.conf
+    regexp: '^;?\s*php_value\[date\.timezone\]'
+    line: "php_value[date.timezone] = {{ timezone }}"
+  notify: Php-fpm を再起動する
+
+# 外には公開しない。このサーバーの中（127.0.0.1）でだけ待ち受ける。
+- name: Web 画面の待ち受けアドレスを設定する
+  ansible.builtin.lineinfile:
+    path: /etc/nginx/conf.d/zabbix.conf
+    regexp: '^#?\s*listen\s'
+    line: "        listen          {{ zabbix_server_web_listen }};"
+  notify: Nginx を再起動する
+
+- name: Web 画面のサーバー名を設定する
+  ansible.builtin.lineinfile:
+    path: /etc/nginx/conf.d/zabbix.conf
+    regexp: '^#?\s*server_name\s'
+    line: "        server_name     localhost;"
+  notify: Nginx を再起動する
+
+- name: Php-fpm と nginx を起動し、起動時にも動くようにする
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - php-fpm
+    - nginx
+
+- name: 設定の変更をここで反映する
+  ansible.builtin.meta: flush_handlers
+
+- name: Web 画面が応答するまで待つ
+  ansible.builtin.uri:
+    url: "http://{{ zabbix_server_web_listen }}/"
+    status_code: 200
+  register: zabbix_server_web_check
+  until: zabbix_server_web_check.status == 200
+  retries: 12
+  delay: 5

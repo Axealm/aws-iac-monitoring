@@ -1,0 +1,63 @@
+# {{ ansible_managed }}
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log notice;
+pid /run/nginx.pid;
+
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" rt=$request_time urt=$upstream_response_time';
+    access_log /var/log/nginx/access.log main;
+
+    sendfile on;
+    tcp_nopush on;
+    keepalive_timeout 65;
+    types_hash_max_size 4096;
+    server_tokens off;
+
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    upstream omikuji {
+        server 127.0.0.1:{{ web_omikuji_port }};
+    }
+
+    server {
+        listen 80 default_server;
+        server_name _;
+
+        # おみくじ API に中継する。API が止まっていると 502 を返す。
+        location = /omikuji {
+            proxy_pass http://omikuji;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_connect_timeout 3s;
+            proxy_read_timeout 5s;
+        }
+
+        location = /healthz {
+            proxy_pass http://omikuji;
+            proxy_connect_timeout 3s;
+            proxy_read_timeout 5s;
+        }
+
+        # nginx 自身の状態。このサーバーの中からだけ見られる（監視用）。
+        location = /nginx_status {
+            stub_status;
+            allow 127.0.0.1;
+            deny all;
+        }
+
+        location / {
+            default_type text/plain;
+            return 200 "omikuji sample web service. try /omikuji\n";
+        }
+    }
+}

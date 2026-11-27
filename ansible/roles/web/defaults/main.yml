@@ -1,0 +1,6 @@
+---
+web_omikuji_user: omikuji
+web_omikuji_dir: /opt/omikuji
+web_omikuji_port: 8000
+# おみくじ API の本体（リポジトリの app/omikuji/）
+web_omikuji_src: "{{ playbook_dir }}/../app/omikuji/omikuji.py"

@@ -1,0 +1,9 @@
+---
+# ansible-lint の設定。ansible/ の中で `ansible-lint` を実行すると使われる。
+profile: production
+
+exclude_paths:
+  - collections/
+
+# タスク名やハンドラー名を日本語で書いているため、英字の大文字で始めるルールは一部で意味を持たない。
+# ルール自体は有効のままにし、該当する名前は英字で始まる語（Nginx、Chrony など）を大文字にしている。

@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+
+# 時刻を {{ chrony_logchange_seconds }} 秒以上ずらして補正したら、syslog に記録する（ずれに気づけるようにする）
+logchange {{ chrony_logchange_seconds }}
+
+# 時計の進み方の推定が不安定なときは、その更新を採用しない
+maxupdateskew {{ chrony_maxupdateskew }}

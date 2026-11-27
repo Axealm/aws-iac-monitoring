@@ -1,0 +1,16 @@
+---
+# Zabbix の公式リポジトリを登録する。zabbix_server ロールからも呼ばれる。
+
+- name: Zabbix の署名の鍵を取り込む
+  ansible.builtin.rpm_key:
+    key: "{{ zabbix_agent_gpg_key_url }}"
+    state: present
+
+- name: Zabbix のリポジトリを登録する
+  ansible.builtin.yum_repository:
+    name: zabbix
+    description: Zabbix Official Repository
+    baseurl: "https://repo.zabbix.com/zabbix/{{ zabbix_agent_version }}/amazonlinux/2023/$basearch/"
+    gpgcheck: true
+    gpgkey: "{{ zabbix_agent_gpg_key_url }}"
+    enabled: true

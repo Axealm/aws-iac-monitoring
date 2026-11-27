@@ -1,0 +1,6 @@
+---
+common_packages:
+  - acl # Ansible が別ユーザー（postgres など）で作業するときに使う
+  - jq
+  - lsof
+  - tar

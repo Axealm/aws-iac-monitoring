@@ -1,0 +1,24 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Omikuji API (sample web service)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ web_omikuji_user }}
+Group={{ web_omikuji_user }}
+Environment=OMIKUJI_HOST=127.0.0.1
+Environment=OMIKUJI_PORT={{ web_omikuji_port }}
+ExecStart=/usr/bin/python3 {{ web_omikuji_dir }}/omikuji.py
+Restart=on-failure
+RestartSec=5
+
+# 権限を絞る
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+---
+zabbix_server_pg_version: 16
+zabbix_server_db_name: zabbix
+zabbix_server_db_user: zabbix
+# Web 画面は外に公開せず、このサーバーの中でだけ待ち受ける（SSM のポート転送で見る）
+zabbix_server_web_listen: "127.0.0.1:8080"
+zabbix_server_api_url: "http://127.0.0.1:8080/api_jsonrpc.php"
+zabbix_server_admin_user: Admin
+# Zabbix を入れた直後の管理者パスワード（公開されている初期値）。初回に変更する。
+zabbix_server_admin_initial_password: zabbix
+
+# パスワードを置く SSM Parameter Store の名前（値は初回実行時に自動生成する）
+zabbix_server_ssm_db_password: "{{ ssm_param_prefix }}/zabbix/db-password"
+zabbix_server_ssm_admin_password: "{{ ssm_param_prefix }}/zabbix/admin-password"
+zabbix_server_secret_names:
+  - "{{ zabbix_server_ssm_db_password }}"
+  - "{{ zabbix_server_ssm_admin_password }}"

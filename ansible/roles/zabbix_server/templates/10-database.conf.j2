@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+# データベースへの接続。パスワードは SSM Parameter Store から取った値。
+DBHost=127.0.0.1
+DBName={{ zabbix_server_db_name }}
+DBUser={{ zabbix_server_db_user }}
+DBPassword={{ zabbix_server_db_password }}

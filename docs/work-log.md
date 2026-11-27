@@ -20,6 +20,10 @@
 | 7 | 2026-11-26 19:30 | `aws login --remote` の URL を開くと「まだプロジェクトはありません」と表示され、認証コードが出なかった | ブラウザーが AWS Builder ID でサインインしていて、AWS アカウントのセッションがなかった。以前作った従来型のアカウントは、2024年に永久閉鎖済みだった | 「+」付きの別アドレスで従来型のアカウントを作り直し、`aws login --remote` で認証した | 解決 |
 | 8 | 2026-11-27 09:38 | IAM ユーザーの確認画面に、管理者の権限が表示されていなかった | 「許可を設定」で既定の「グループに追加」のまま、何も選ばずに進めていた | 作成前に気づき、戻って `AdministratorAccess` を直接付ける | 解決 |
 | 9 | 2026-11-27 10:05 | state のロックの確認が、最初の方法では判定できなかった | 確認の方法がタイミングに頼っていた | plan の実行中に S3 のロックファイルを直接確認する方法に変えた | 解決 |
+| 10 | 2026-11-27 10:40 | Ansible が `aws login` の認証情報を使えなかった | boto3 から使うには追加の依存（awscrt）が必要だった | awscrt をパッケージ名で指定して追加した | 解決 |
+| 11 | 2026-11-27 10:55 | SSM Parameter Store に書き込むモジュールが見つからなかった | 入れたコレクションには読み取り用しかなかった | AWS CLI を呼ぶ形に変えた | 解決 |
+| 12 | 2026-11-27 11:00 | SSM Parameter Store の読み取りが AccessDenied になった | `aws` で始まるパラメータ名は予約されている | パラメータ名の先頭を変えた | 解決 |
+| 13 | 2026-11-27 11:20 | 全検査をまとめて実行すると「失敗」になった（1つずつなら通る項目もあった） | tflint が、新しく入れた Ansible コレクションの中の Terraform ファイルまで検査していた | tflint の対象を `terraform/` に絞った | 解決 |
 
 ## 詳細
 
@@ -285,6 +289,53 @@
 
 - **学び**: 「タイミングが合えば失敗する」ことを期待する確認は、合わなかったときに何も分からない。仕組みが残す痕跡（ここではロックファイル）を直接見る確認にする。確認が「できなかった」ときに「問題なし」と報告しない。
 
+### 10. Ansible が `aws login` の認証情報を使えなかった
+
+- **事象**: 動的インベントリの読み込みが失敗した。
+
+  ```
+  Couldn't connect to AWS: Missing Dependency: Using the login credential provider
+  requires an additional dependency. You will need to pip install "botocore[crt]" before proceeding.
+  ```
+
+- **原因**: `aws login` の認証情報を boto3（Ansible の AWS 用プラグインが使うライブラリ）から読むには、追加の依存（awscrt）が必要だった。AWS CLI や Terraform は自前で対応しているので、そちらでは起きなかった。
+- **対処**: Ansible を入れた環境に awscrt を足した。最初は `pipx inject ansible-core "botocore[crt]"` を実行したが、botocore がすでに入っているため何も足されなかった。`pipx inject ansible-core awscrt` と、パッケージ名で指定し直して解決した。
+- **学び**: 同じ認証情報でも、ツールごとに読める条件が違う。認証方式を変えたら、使うツールすべてで疎通を確かめる。
+
+### 11. SSM Parameter Store に書き込むモジュールが、入れたコレクションになかった
+
+- **事象**: 構文チェックで `couldn't resolve module/action 'amazon.aws.ssm_parameter'` になった。
+- **原因**: `amazon.aws` コレクションにあるのは、読み取り用のプラグイン（lookup）だけだった。書き込み用のモジュールは別のコレクションにある。名前から「あるはず」と思い込んで書いていた。
+- **対処**: コレクションを増やさず、AWS CLI を呼ぶ形にした（`aws ssm put-parameter --no-overwrite`）。先に読み取り用のプラグインで有無を調べ、ない場合だけ作る。
+- **学び**: モジュール名は、入れたコレクションの中身で確かめてから書く。構文チェックを実行前に通す習慣が、ここで効いた。
+
+### 12. SSM Parameter Store の読み取りが `AccessDenied` になった
+
+- **事象**: playbook の1回目が、パスワードの有無を調べるところで止まった。
+
+  ```
+  Failed to access SSM parameter /aws-iac-monitoring/dev/zabbix/db-password (AccessDenied)
+  ```
+
+- **調査**: 管理者の権限を持つユーザーなのに拒否されたので、権限ではないと考えて CLI で同じ操作を試した。
+
+  ```
+  An error occurred (AccessDeniedException) when calling the GetParameter operation:
+  No access to reserved parameter name: aws-iac-monitoring/dev/zabbix/db-password.
+  ```
+
+- **原因**: SSM Parameter Store では、`aws` や `ssm` で始まるパラメータ名を AWS が予約している。プロジェクト名をそのまま使った `/aws-iac-monitoring/...` がこれに当たっていた。
+- **対処**: パラメータ名の先頭を `/iac-monitoring/dev` に変えた。
+- **学び**: `AccessDenied` は、権限の不足とは限らない。Ansible のプラグイン経由だと詳しい理由が省かれるので、CLI で同じ操作をしてエラーの全文を見る。
+
+### 13. 全検査をまとめて実行すると失敗になった
+
+- **事象**: コミット前に `scripts/dev/check.sh` を実行すると、最後に「検査に失敗したものがあります」と出た。画面に見えていた各検査の結果は、どれも成功に見えた。
+- **調査**: 検査を1つずつ実行して終了コードを見た。tflint だけが 1 を返していた。出力には `Missing version constraint for provider "null"` など、自分が書いていないコードへの警告が並んでいた。
+- **原因**: tflint を `--recursive` でリポジトリ全体に対して実行していた。Ansible のコレクション（`ansible/collections/`）を入れたことで、その中に含まれる Terraform ファイルまで検査の対象になっていた。
+- **対処**: tflint の対象を `terraform/` に絞った（`tflint --chdir=terraform --recursive`）。
+- **学び**: 「全体を再帰的に検査する」設定は、あとから入れた外部のファイルを巻き込む。検査の対象は、自分のコードがある場所に明示して絞る。結果の要約だけを見て「通った」と判断せず、終了コードを見る。
+
 ## 判断の記録
 
 作業の途中で、調べた結果をもとに決めたこと・最初の想定から変えたこと。
@@ -304,3 +355,6 @@
 | 2026-11-27 | 予算の判定は、クレジットで相殺する前の利用額にした（`include_credit = false`） | 無料プランでは請求額が 0 になり、既定のままでは通知が一度も飛ばない。クレジットを使い切るとアカウントが閉じるので、減り具合を知りたい |
 | 2026-11-27 | 費用の見積もりの単価を Price List API で確認した | 記憶に基づく目安だった単価（t3.small 0.0272、t3.micro 0.0136、パブリック IPv4 0.005 ドル/時間、gp3 0.096 ドル/GB・月）が、実際の値と一致した。t3.small と t3.micro は無料利用枠の対象でもあった |
 | 2026-11-27 | apply の前に、作業用の IAM ユーザーを作ることにした | ルートユーザーは何でもできる権限で、日常の作業には使わないのが AWS の推奨。Terraform の操作は IAM ユーザーで行う |
+| 2026-11-27 | サーバーの中の sshd を止めて無効にした | 接続は SSM だけ。セキュリティグループで 22 番を閉じているが、使わない入口はサーバーの中でも止める |
+| 2026-11-27 | パスワードは初回にランダム生成して SSM Parameter Store に置いた | リポジトリ・tfstate・平文のファイルのどこにも残さないため。Zabbix の管理者の初期パスワード（公開されている値）も、このときに変更する |
+| 2026-11-27 | サーバー側の Python は 3.9 のまま使った | ansible-core 2.22 が Python 3.9 のサーバーで動くことを、ping で確かめられた。新しい Python を入れる必要がなかった |

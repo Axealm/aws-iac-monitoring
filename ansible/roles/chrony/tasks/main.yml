@@ -1,0 +1,23 @@
+---
+# 時刻同期。Amazon Linux 2023 は最初から Amazon Time Sync Service（169.254.169.123）を
+# 参照する設定になっているので、参照先は変えず、監視しやすくする設定だけを足す。
+
+- name: Chrony を入れる
+  ansible.builtin.dnf:
+    name: chrony
+    state: present
+
+- name: Chrony の追加設定を配置する
+  ansible.builtin.template:
+    src: 10-monitoring.conf.j2
+    dest: /etc/chrony.d/10-monitoring.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Chronyd を再起動する
+
+- name: Chronyd を起動し、起動時にも動くようにする
+  ansible.builtin.systemd_service:
+    name: chronyd
+    state: started
+    enabled: true

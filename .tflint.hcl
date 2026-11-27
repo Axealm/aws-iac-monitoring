@@ -1,7 +1,7 @@
 # tflint の設定。リポジトリの直下で次のように実行する。
 #
 #   tflint --init
-#   tflint --recursive --config "$(pwd)/.tflint.hcl"
+#   tflint --chdir=terraform --recursive --config "$(pwd)/.tflint.hcl"
 
 plugin "terraform" {
   enabled = true

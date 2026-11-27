@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+
+# このエージェントに問い合わせてよい Zabbix サーバー（パッシブチェック）
+Server=127.0.0.1,{{ zabbix_server_ip }}
+
+# このエージェントがデータを送る先（アクティブチェック）
+ServerActive={{ zabbix_server_ip }}
+
+# Zabbix に登録するホスト名と同じにする
+Hostname={{ inventory_hostname }}

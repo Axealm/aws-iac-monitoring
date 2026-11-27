@@ -1,0 +1,4 @@
+---
+zabbix_agent_version: "7.0"
+# Zabbix 7.0 のパッケージの署名に使われている鍵
+zabbix_agent_gpg_key_url: https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-B5333005

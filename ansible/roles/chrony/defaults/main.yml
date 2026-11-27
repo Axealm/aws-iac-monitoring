@@ -1,0 +1,3 @@
+---
+chrony_logchange_seconds: 0.5
+chrony_maxupdateskew: 100.0

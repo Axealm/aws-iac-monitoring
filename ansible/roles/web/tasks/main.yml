@@ -1,0 +1,70 @@
+---
+# サンプルの Web サービス: nginx が前に立ち、裏のおみくじ API（Python）に中継する。
+# nginx と API を別のサービスにしているので、「nginx は動いているが API が止まった（502）」
+# という障害を作って監視できる。
+
+# --- おみくじ API ---
+
+- name: おみくじ API 用のユーザーを作る（ログイン不可）
+  ansible.builtin.user:
+    name: "{{ web_omikuji_user }}"
+    system: true
+    shell: /sbin/nologin
+    home: "{{ web_omikuji_dir }}"
+    create_home: false
+
+- name: おみくじ API の置き場所を作る
+  ansible.builtin.file:
+    path: "{{ web_omikuji_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: おみくじ API を配置する
+  ansible.builtin.copy:
+    src: "{{ web_omikuji_src }}"
+    dest: "{{ web_omikuji_dir }}/omikuji.py"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: おみくじ API を再起動する
+
+- name: おみくじ API の systemd ユニットを配置する
+  ansible.builtin.template:
+    src: omikuji.service.j2
+    dest: /etc/systemd/system/omikuji.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: おみくじ API を再起動する
+
+- name: おみくじ API を起動し、起動時にも動くようにする
+  ansible.builtin.systemd_service:
+    name: omikuji
+    state: started
+    enabled: true
+    daemon_reload: true
+
+# --- nginx ---
+
+- name: Nginx を入れる
+  ansible.builtin.dnf:
+    name: nginx
+    state: present
+
+- name: Nginx の設定を配置する
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: nginx -t -c %s
+  notify: Nginx を読み込み直す
+
+- name: Nginx を起動し、起動時にも動くようにする
+  ansible.builtin.systemd_service:
+    name: nginx
+    state: started
+    enabled: true

@@ -1,0 +1,4 @@
+---
+- name: Sysctl を読み込み直す
+  ansible.builtin.command: sysctl --system
+  changed_when: true

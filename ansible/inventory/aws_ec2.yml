@@ -1,0 +1,26 @@
+# 動的インベントリ。IP アドレスを書かず、タグで対象を決める。
+# Terraform が付けたタグ Project / Environment で絞り、タグ Role（monitor / web）でグループを作る。
+---
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - ap-northeast-1
+
+filters:
+  tag:Project: aws-iac-monitoring
+  tag:Environment: dev
+  instance-state-name: running
+
+# ホスト名はタグ Name（例: aws-iac-monitoring-dev-web）
+hostnames:
+  - tag:Name
+
+# タグ Role の値がそのままグループ名になる（monitor / web）
+keyed_groups:
+  - key: ec2_tags.Role
+    separator: ""
+
+compose:
+  # SSM 接続では、接続先をインスタンス ID で指定する
+  ansible_host: instance_id
+  private_ip: private_ip_address

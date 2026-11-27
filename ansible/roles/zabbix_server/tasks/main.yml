@@ -1,0 +1,17 @@
+---
+# Zabbix Server: PostgreSQL、Zabbix サーバー本体、Web 画面（nginx + php-fpm）を1台に入れる。
+
+- name: パスワードを用意する（SSM Parameter Store）
+  ansible.builtin.import_tasks: secrets.yml
+
+- name: PostgreSQL を用意する
+  ansible.builtin.import_tasks: postgresql.yml
+
+- name: Zabbix サーバーを入れる
+  ansible.builtin.import_tasks: server.yml
+
+- name: Web 画面を用意する
+  ansible.builtin.import_tasks: web.yml
+
+- name: 管理者の初期パスワードを変更する
+  ansible.builtin.import_tasks: admin_password.yml

@@ -1,0 +1,17 @@
+<?php
+// {{ ansible_managed }}
+// Zabbix の Web 画面の設定。パスワードは SSM Parameter Store から取った値。
+
+$DB['TYPE']     = 'POSTGRESQL';
+$DB['SERVER']   = '127.0.0.1';
+$DB['PORT']     = '5432';
+$DB['DATABASE'] = '{{ zabbix_server_db_name }}';
+$DB['USER']     = '{{ zabbix_server_db_user }}';
+$DB['PASSWORD'] = '{{ zabbix_server_db_password }}';
+$DB['SCHEMA']   = '';
+$DB['ENCRYPTION'] = false;
+$DB['DOUBLE_IEEE754'] = true;
+
+$ZBX_SERVER_NAME = 'aws-iac-monitoring';
+
+$IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;

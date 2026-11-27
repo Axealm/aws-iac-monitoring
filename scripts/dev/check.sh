@@ -2,7 +2,7 @@
 # 手元での検査をまとめて実行する。AWS には接続しない。
 #
 #   bash scripts/dev/check.sh            すべて実行
-#   bash scripts/dev/check.sh checkov    1つだけ実行（gitleaks / fmt / validate / tflint / checkov）
+#   bash scripts/dev/check.sh checkov    1つだけ実行（gitleaks / fmt / validate / tflint / checkov / pytest / ansible）
 #
 # 1つでも失敗すると、終了コード 1 で終わる。
 set -uo pipefail
@@ -51,13 +51,27 @@ fi
 if run tflint; then
   echo "===== tflint ====="
   tflint --init --config "$PWD/.tflint.hcl" > /dev/null
-  tflint --recursive --config "$PWD/.tflint.hcl" --no-color || failed=1
+  # 対象を terraform/ に絞る（ansible/collections/ の中にも .tf ファイルがあるため）
+  tflint --chdir=terraform --recursive --config "$PWD/.tflint.hcl" --no-color || failed=1
   echo "tflint: 完了"
 fi
 
 if run checkov; then
   echo "===== checkov ====="
   checkov --config-file .checkov.yaml || failed=1
+fi
+
+if run pytest; then
+  echo "===== おみくじ API のテスト ====="
+  python3 -m unittest discover -s app/omikuji -q || failed=1
+fi
+
+if run ansible; then
+  echo "===== ansible-playbook --syntax-check ====="
+  # 構文の確認は AWS に接続しなくてよいので、空のインベントリで実行する
+  (cd ansible && ANSIBLE_CONFIG="$PWD/ansible.cfg" ansible-playbook -i localhost, --syntax-check site.yml) || failed=1
+  echo "===== ansible-lint ====="
+  (cd ansible && ANSIBLE_CONFIG="$PWD/ansible.cfg" ansible-lint --offline) || failed=1
 fi
 
 if [ "$failed" -ne 0 ]; then

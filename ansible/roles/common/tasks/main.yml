@@ -1,0 +1,28 @@
+---
+# 全サーバー共通の設定: パッケージ、タイムゾーン、最低限のハードニング
+
+- name: 基本のパッケージを入れる
+  ansible.builtin.dnf:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: タイムゾーンを設定する
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+# 接続は SSM Session Manager だけを使う。セキュリティグループでも 22 番は開けていないが、
+# 使わない入口はサーバーの中でも止めておく。
+- name: SSH のサービス（sshd）を止めて、起動時にも動かないようにする
+  ansible.builtin.systemd_service:
+    name: sshd
+    state: stopped
+    enabled: false
+
+- name: カーネルのネットワーク設定を配置する
+  ansible.builtin.template:
+    src: 90-hardening.conf.j2
+    dest: /etc/sysctl.d/90-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Sysctl を読み込み直す

@@ -1,0 +1,56 @@
+---
+- name: Zabbix のリポジトリを登録する
+  ansible.builtin.include_role:
+    name: zabbix_agent
+    tasks_from: repo
+
+- name: Zabbix サーバーと Web 画面のパッケージを入れる
+  ansible.builtin.dnf:
+    name:
+      - zabbix-server-pgsql
+      - zabbix-sql-scripts
+      - zabbix-web-pgsql
+      - zabbix-web-japanese
+      - zabbix-nginx-conf
+      - glibc-langpack-ja
+    state: present
+
+- name: Zabbix のテーブルがあるかを調べる
+  community.postgresql.postgresql_query:
+    login_host: 127.0.0.1
+    login_user: "{{ zabbix_server_db_user }}"
+    login_password: "{{ zabbix_server_db_password }}"
+    login_db: "{{ zabbix_server_db_name }}"
+    query: SELECT count(*) AS n FROM information_schema.tables WHERE table_name = 'dbversion'
+  register: zabbix_server_schema
+  changed_when: false
+  no_log: true
+
+- name: Zabbix のスキーマと初期データを取り込む（最初の1回だけ）
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail &&
+      zcat /usr/share/zabbix-sql-scripts/postgresql/server.sql.gz |
+      psql -v ON_ERROR_STOP=1 -q -h 127.0.0.1 -U {{ zabbix_server_db_user }} {{ zabbix_server_db_name }}
+    executable: /bin/bash
+  environment:
+    PGPASSWORD: "{{ zabbix_server_db_password }}"
+  when: zabbix_server_schema.query_result[0].n | int == 0
+  changed_when: true
+  no_log: true
+
+- name: Zabbix サーバーのデータベース接続を設定する
+  ansible.builtin.template:
+    src: 10-database.conf.j2
+    dest: /etc/zabbix/zabbix_server.d/10-database.conf
+    owner: root
+    group: zabbix
+    mode: "0640"
+  notify: Zabbix サーバーを再起動する
+  no_log: true
+
+- name: Zabbix サーバーを起動し、起動時にも動くようにする
+  ansible.builtin.systemd_service:
+    name: zabbix-server
+    state: started
+    enabled: true
