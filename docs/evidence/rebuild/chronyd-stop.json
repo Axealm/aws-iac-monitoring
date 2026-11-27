@@ -1,0 +1,30 @@
+{
+  "scenario": "chronyd-stop",
+  "title": "chronyd を止める",
+  "target": "web",
+  "expect": [
+    "chronyd is not running"
+  ],
+  "detected": {
+    "chronyd is not running": {
+      "event_name": "chronyd is not running on aws-iac-monitoring-dev-web",
+      "severity": "High",
+      "at": "2026-11-27T13:34:27+09:00",
+      "seconds_after_injection": 3
+    }
+  },
+  "resolved": {
+    "chronyd is not running": {
+      "at": "2026-11-27T13:35:01+09:00",
+      "seconds_after_recovery": 26
+    }
+  },
+  "unexpected": [],
+  "result": "PASS",
+  "injected_at": "2026-11-27T13:34:24+09:00",
+  "problems_while_injected": [
+    "chronyd is not running on aws-iac-monitoring-dev-web"
+  ],
+  "recovered_at": "2026-11-27T13:34:35+09:00",
+  "problems_after": []
+}

@@ -62,6 +62,7 @@ flowchart LR
 | 監視設定もコードで入れる | Zabbix のテンプレート・ホスト・通知を Ansible で登録 | 2回目の実行で `changed=0` |
 | 障害を検知して通知する | サービス停止、HTTP の異常、CPU 負荷を検知し、発報と復旧をメールで通知 | [障害注入テスト](docs/fault-injection.md) 4種類 |
 | 検査を自動で回す | fmt / validate / tflint / checkov / ansible-lint / テスト / gitleaks | `scripts/dev/check.sh` と GitHub Actions |
+| 一から再現する | 環境を消して、コードだけで作り直す（destroy → apply → 設定 → 確認 → 障害注入 → destroy） | `scripts/dev/rebuild-test.sh`。途中の手直しなし、約16分 |
 
 ## 障害注入テストの結果（要約）
 
@@ -194,7 +195,7 @@ bash scripts/fault-injection/run-all.sh cpu-load    # CPU 負荷
 使わないときは消して、課金を止めます。
 
 ```bash
-terraform -chdir=terraform/envs/dev destroy
+bash scripts/dev/tf-destroy.sh    # dev 環境を消して、消えたことと残っているものを確認する
 ```
 
 state 用のバケットと予算は残ります（費用はほぼ 0）。完全に消す場合は、バケットの中身（古い版を含む）を空にしてから、`terraform -chdir=terraform/bootstrap destroy` を実行します。SSM Parameter Store のパスワード（`/iac-monitoring/dev/zabbix/*`）は Ansible が作ったものなので、別に消します。
@@ -262,7 +263,7 @@ docs/
 
 - Zabbix サーバーのプロセスだけが止まった場合の検知（EC2 が正常だと、今の構成では気づけない）
 - EC2 のステータスチェックのアラーム、監視サーバー自身の停止、エージェントに届かない状態のテスト
-- 同じ障害注入の繰り返し（検知までの時間のばらつきの測定）
+- 同じ障害注入の多数回の繰り返し（検知までの時間のばらつきの測定。実施したのは2回まで）
 - 通知先をメールからチャット（Slack など）にする。重要度による通知の出し分け
 - ログの監視、ディスクやメモリを使い切るテスト
 
