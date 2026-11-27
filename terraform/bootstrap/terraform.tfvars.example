@@ -1,0 +1,8 @@
+# このファイルを terraform.tfvars にコピーして値を書き換える。
+# terraform.tfvars は .gitignore で除外しているので、リポジトリには入らない。
+
+# 予算の通知を受け取るメールアドレス
+budget_email = "you@example.com"
+
+# 月額の予算（米ドル）。既定は 7（約 1,000 円）
+# budget_limit_usd = "7"

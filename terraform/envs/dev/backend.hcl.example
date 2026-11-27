@@ -1,0 +1,4 @@
+# このファイルを backend.hcl にコピーし、bootstrap の出力 state_bucket_name の値を書く。
+# backend.hcl は .gitignore で除外しているので、リポジトリには入らない。
+
+bucket = "aws-iac-monitoring-tfstate-123456789012"

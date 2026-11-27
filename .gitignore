@@ -1,0 +1,39 @@
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+backend.hcl
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+# .terraform.lock.hcl はコミットする（プロバイダーの版を固定するため）
+
+# --- 認証情報・秘密情報 ---
+.aws/
+.env
+.env.*
+*.pem
+*.key
+*.p12
+
+# --- Ansible ---
+*.retry
+ansible/.ansible/
+ansible/collections/
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+
+# --- 作業用の文書（公開しない） ---
+aidlc-docs/
+
+# --- OS・エディター ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

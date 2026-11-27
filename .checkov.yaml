@@ -1,0 +1,24 @@
+# checkov の設定。リポジトリの直下で `checkov` を実行すると、この設定が使われる。
+#
+# ここで除外しているのは、プロジェクト全体の方針で「直さない」と決めた指摘。
+# 個別のリソースだけの除外は、そのリソースのコードに理由つきで書いている（#checkov:skip=...）。
+
+directory:
+  - terraform
+framework:
+  - terraform
+quiet: true
+compact: true
+download-external-modules: false
+
+skip-check:
+  # VPC フローログ: ログの保存先（CloudWatch Logs か S3）の費用が増える。検証用の最小構成では取らない
+  - CKV2_AWS_11
+  # S3 のアクセスログ: ログ用のバケットがもう1つ必要になる。state と一時ファイルだけのバケットでは取らない
+  - CKV_AWS_18
+  # S3 のクロスリージョンレプリケーション: 検証用で、別リージョンへの複製は必要ない
+  - CKV_AWS_144
+  # S3 の KMS 暗号化: SSE-S3（AES256）で暗号化している。KMS のキーは月1ドルかかる
+  - CKV_AWS_145
+  # S3 のイベント通知: 通知を使う処理がない
+  - CKV2_AWS_62

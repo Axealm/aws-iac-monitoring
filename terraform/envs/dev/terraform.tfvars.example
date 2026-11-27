@@ -1,0 +1,11 @@
+# このファイルを terraform.tfvars にコピーして値を書き換える。
+# terraform.tfvars は .gitignore で除外しているので、リポジトリには入らない。
+
+# web サーバーの 80 番に接続を許可する IP（自分のグローバル IP を /32 で書く）。
+# 自分の IP は https://checkip.amazonaws.com で確認できる。
+# 空のリスト [] にすると、外からは接続できない。
+allowed_http_cidrs = ["203.0.113.10/32"]
+
+# インスタンスタイプを変える場合だけ書く
+# monitor_instance_type = "t3.small"
+# web_instance_type     = "t3.micro"
