@@ -64,12 +64,13 @@ fi
 if run pytest; then
   echo "===== おみくじ API のテスト ====="
   python3 -m unittest discover -s app/omikuji -q || failed=1
+  python3 -m py_compile scripts/dev/zabbix_api.py scripts/dev/zabbix_viewer.py scripts/fault-injection/run_test.py || failed=1
 fi
 
 if run ansible; then
   echo "===== ansible-playbook --syntax-check ====="
   # 構文の確認は AWS に接続しなくてよいので、空のインベントリで実行する
-  (cd ansible && ANSIBLE_CONFIG="$PWD/ansible.cfg" ansible-playbook -i localhost, --syntax-check site.yml) || failed=1
+  (cd ansible && ANSIBLE_CONFIG="$PWD/ansible.cfg" ansible-playbook -i localhost, --syntax-check site.yml && ANSIBLE_CONFIG="$PWD/ansible.cfg" ansible-playbook -i localhost, --syntax-check zabbix-config.yml) || failed=1
   echo "===== ansible-lint ====="
   (cd ansible && ANSIBLE_CONFIG="$PWD/ansible.cfg" ansible-lint --offline) || failed=1
 fi
